@@ -65,3 +65,9 @@ config/*.yml
 
 # System Files
 .DS_Store
+
+# Trivy Scan Reports
+reports/
+trivy-*.sarif
+trivy-*.json
+sbom.json
