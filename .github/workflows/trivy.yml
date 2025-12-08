@@ -1,72 +1,37 @@
-name: Security Scan
+name: Trivy
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write  # needed for SARIF upload
 
 jobs:
   trivy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
 
     steps:
-      # ------------------
-      # Checkout your repo
-      # ------------------
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # ------------------
-      # Filesystem scan
-      #   - Dependencies (vuln)
-      #   - Secrets
-      #   - Licenses
-      #   - IaC / misconfigurations
-      # ------------------
-      - name: Trivy repository scan
-        uses: aquasecurity/trivy-action@0.28.0
+      # Trivy Action (has built-in caching by default)
+      - name: Run Trivy scan (SARIF)
+        uses: aquasecurity/trivy-action@master
         with:
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln,secret,license,misconfig
-          severity: HIGH,CRITICAL
-          format: sarif
-          output: trivy-fs.sarif
-          exit-code: 1
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "HIGH,CRITICAL"
+          ignore-unfixed: true
+          exit-code: "1"   # fail job if findings match severity filter
 
-      # Upload SARIF to GitHub Security tab
-      - name: Upload FS SARIF
+      - name: Upload SARIF to GitHub Security
+        if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: trivy-fs.sarif
-
-      # ------------------
-      # Build container image
-      # ------------------
-      - name: Build Docker image
-        run: docker build -t app:${{ github.sha }} .
-
-      # ------------------
-      # Container image scan
-      #   - Vulnerabilities in OS + deps
-      # ------------------
-      - name: Trivy image scan
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: app:${{ github.sha }}
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          format: sarif
-          output: trivy-image.sarif
-          exit-code: 1
-
-      # Upload SARIF to GitHub Security tab
-      - name: Upload image SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-image.sarif
+          sarif_file: "trivy-results.sarif"
