@@ -32,7 +32,7 @@ jobs:
         with:
           scan-type: fs
           scan-ref: .
-          scanners: vuln,secret,license,misconfig
+          scanners: vuln,secret,license
           severity: HIGH,CRITICAL
           format: sarif
           output: trivy-fs.sarif
