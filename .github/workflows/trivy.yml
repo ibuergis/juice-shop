@@ -1,4 +1,5 @@
-name: Trivy
+# .github/workflows/trivy.yml
+name: trivy
 
 on:
   push:
@@ -8,35 +9,49 @@ on:
 
 permissions:
   contents: read
+  security-events: write
 
 jobs:
   trivy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 1) Full scan: show EVERYTHING, do not fail yet
-      - name: Trivy full scan (all findings)
-        uses: aquasecurity/trivy-action@master
+      - uses: aquasecurity/trivy-action@master
         with:
-          scan-type: "fs"
-          scan-ref: "."
-          scanners: "vuln,secret,config,license"
-          format: "table"
-          severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,config,license
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
           ignore-unfixed: false
+          include-dev-deps: true
+          format: table
           exit-code: "0"
 
-      # 2) Gate: fail the job if ANY finding exists
-      - name: Trivy gate (fail after scan)
-        uses: aquasecurity/trivy-action@master
+      - uses: aquasecurity/trivy-action@master
         with:
-          scan-type: "fs"
-          scan-ref: "."
-          scanners: "vuln,secret,config,license"
-          format: "table"
-          severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,config,license
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
           ignore-unfixed: false
+          include-dev-deps: true
+          format: sarif
+          output: trivy.sarif
+          exit-code: "0"
+
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif
+
+      - uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,config,license
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          include-dev-deps: true
+          format: table
           exit-code: "1"
