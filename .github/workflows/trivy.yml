@@ -2,36 +2,41 @@ name: Trivy
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  security-events: write  # needed for SARIF upload
 
 jobs:
   trivy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Trivy Action (has built-in caching by default)
-      - name: Run Trivy scan (SARIF)
+      # 1) Full scan: show EVERYTHING, do not fail yet
+      - name: Trivy full scan (all findings)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
           scan-ref: "."
-          format: "sarif"
-          output: "trivy-results.sarif"
-          severity: "HIGH,CRITICAL"
-          ignore-unfixed: true
-          exit-code: "1"   # fail job if findings match severity filter
+          scanners: "vuln,secret,config,license"
+          format: "table"
+          severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+          ignore-unfixed: false
+          exit-code: "0"
 
-      - name: Upload SARIF to GitHub Security
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
+      # 2) Gate: fail the job if ANY finding exists
+      - name: Trivy gate (fail after scan)
+        uses: aquasecurity/trivy-action@master
         with:
-          sarif_file: "trivy-results.sarif"
+          scan-type: "fs"
+          scan-ref: "."
+          scanners: "vuln,secret,config,license"
+          format: "table"
+          severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+          ignore-unfixed: false
+          exit-code: "1"
